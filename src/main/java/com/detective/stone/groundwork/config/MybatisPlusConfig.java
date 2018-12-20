@@ -11,10 +11,15 @@ import com.baomidou.mybatisplus.extension.injector.methods.additional.LogicDelet
 /**
  * @author Detective Stone
  * Create time 2018/12/19 17:12
+ * <p>
+ * mybatis-plus 配置类
  */
 @Configuration
 public class MybatisPlusConfig {
 
+    /**
+     * 逻辑删除配置
+     */
     @Bean
     public ISqlInjector sqlInjector() {
         return new LogicSqlInjector();
