@@ -1,5 +1,13 @@
 package com.detective.stone.groundwork.dbAssist;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import com.baomidou.mybatisplus.annotation.DbType;
@@ -14,12 +22,19 @@ import com.baomidou.mybatisplus.generator.config.TemplateConfig;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.baomidou.mybatisplus.generator.config.rules.NamingStrategy;
 import com.baomidou.mybatisplus.generator.engine.FreemarkerTemplateEngine;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import freemarker.template.Version;
+import lombok.extern.log4j.Log4j2;
 
 /**
  * @author Detective Stone
  * Create time 2018/12/19 13:30
  */
+@Log4j2
 public class AutoGenerate {
+
+    private final static char sep = File.separatorChar;
 
     // TODO 后期使用配置文件读取形式,暂时写死.
     public static void main(String[] args) {
@@ -30,7 +45,7 @@ public class AutoGenerate {
         globalConfig.setOutputDir(projectPath + "/src/main/java"); // 输出目录
         globalConfig.setAuthor("Detective Stone"); // 作者
         //globalConfig.setFileOverride(false); //是否覆盖已有文件,默认false
-        //globalConfig.setSwagger2(true); // TODO 暂时没有集成swagger2稍后集成
+        globalConfig.setSwagger2(true); // TODO 暂时没有集成swagger2稍后集成
         globalConfig.setEntityName("%s"); // 设置实体类名字  %s为占位符
         globalConfig.setMapperName("%sMapper"); // 设置mapper名字  %s为占位符
         globalConfig.setXmlName("%sMapper"); // 设置mapper.xml名字  %s为占位符
@@ -71,6 +86,7 @@ public class AutoGenerate {
         strategyConfig.setEntityColumnConstant(true);
         strategyConfig.setLogicDeleteFieldName("deleted_flag");
         strategyConfig.entityTableFieldAnnotationEnable(true);
+        strategyConfig.setInclude("tests");
         mpg.setStrategy(strategyConfig);
 
 
@@ -89,6 +105,15 @@ public class AutoGenerate {
         focList.add(new FileOutConfig(templatePath) {
             @Override
             public String outputFile(TableInfo tableInfo) {
+                LocalDateTime now = LocalDateTime.now();
+                String date = now.toString().replace("T"," ");
+                InputGenerateDTO inputDTO = new InputGenerateDTO();
+                inputDTO.setTable(tableInfo);
+                inputDTO.setSwagger2(globalConfig.isSwagger2());
+                inputDTO.setEntityLombokModel(strategyConfig.isEntityLombokModel());
+                inputDTO.setAuthor(globalConfig.getAuthor());
+                inputDTO.setDate(date);
+                inputGenerate(inputDTO,projectPath + "/src/main/java");
                 return projectPath + "/src/main/resources/mapper/" + tableInfo.getXmlName() + ".xml";
             }
         });
@@ -109,5 +134,25 @@ public class AutoGenerate {
         mpg.setTemplateEngine(new FreemarkerTemplateEngine());
         mpg.execute();
         System.out.println("代码生成成功");
+    }
+
+    private static void inputGenerate(InputGenerateDTO info,String path) {
+        String folderPath =
+                System.getProperty("user.dir") + sep + "src" + sep + "main" + sep + "resources" + sep
+                        + "templates" + sep;
+        Version version = new Version("2.3.23");
+        Configuration cfg = new Configuration(version);
+        String ftlFile ="input.java.ftl";
+        try {
+            File f = new File( path+"/com/detective/stone/groundwork/input/" + info.getTable().getEntityName() + "Input.java");
+            f.createNewFile();
+            cfg.setDirectoryForTemplateLoading(new File(folderPath));
+            Template template = cfg.getTemplate(ftlFile, "utf-8");
+            Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(f),"UTF-8"));
+            template.process(info, out);
+            out.flush();
+        } catch (Exception e) {
+            log.info("io出错");
+        }
     }
 }
